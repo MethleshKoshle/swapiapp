@@ -11,23 +11,50 @@ class People {
   People(this.url);
 }
 
-void main() {
-  runApp(MaterialApp(
-    title: 'Passing Data',
-    home: PeopleScreen(
-        apiUrl: "https://swapi.dev/api/people"
-    ),
-  ));
+void main() => runApp(new MyApp());
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: PeopleScreen(apiUrl: "https://swapi.dev/api/people"),
+    );
+  }
 }
 
-class PeopleScreen extends StatelessWidget {
-  final String apiUrl;// = "https://swapi.dev/api/people";
+class PeopleScreen extends StatefulWidget {
+  PeopleScreen({Key key, this.apiUrl}) : super(key: key);
 
-  Future<List<dynamic>> fetchUsers() async {
+  final String apiUrl;
 
-    var result = await http.get(apiUrl);
-    return json.decode(result.body)['results'];
+  @override
+  _PeopleScreen createState() => _PeopleScreen();
+}
+class _PeopleScreen extends State<PeopleScreen>{
+  List<dynamic> userList;
+  bool _finished=false;
 
+  @override
+  void initState() {
+    super.initState();
+    this.getPeopleList();
+  }
+
+  void getPeopleList() async{
+      var result = await http.get(
+          Uri.encodeFull(widget.apiUrl),
+          headers: {"Accept":"Application/json"}
+      );
+      var _result = jsonDecode(result.body);
+
+      setState(() {
+        userList = _result['results'];
+      });
+      _finished=true;
   }
 
   String _name(dynamic user){
@@ -37,49 +64,39 @@ class PeopleScreen extends StatelessWidget {
     return user['url'];
   }
 
-  PeopleScreen({Key key, @required this.apiUrl}) : super(key: key);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+
       appBar: AppBar(
         title: Text('User List'),
       ),
-      body: Container(
-        child: FutureBuilder<List<dynamic>>(
-          future: fetchUsers(),
-          builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if(snapshot.hasData){
-              return ListView.builder(
-                  padding: EdgeInsets.all(8),
-                  itemCount: snapshot.data.length,
-                  itemBuilder: (BuildContext context, int index){
-                    return
-                      Card(
-                        child: Column(
-                          children: <Widget>[
-                            ListTile(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => secondScreen(people: _url(snapshot.data[index])),
-                                  ),
-                                );
-                              },
-                              title: Text(_name(snapshot.data[index])),
-                            )
-                          ],
-                        ),
 
-                      );
-                  });
-            }else {
-              return Center(child: CircularProgressIndicator());
-            }
-          },
-        ),
-      ),
+      body: _finished ? ListView.builder(
+
+        padding: const EdgeInsets.all(8),
+        itemCount: userList.length,
+        itemBuilder: (BuildContext context, int index) {
+
+          return Card(
+            child: Column(
+              children: <Widget>[
+                ListTile(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => secondScreen(people: _url(userList[index])),
+                      ),
+                    );
+                  },
+                  title: Text(_name(userList[index])),
+                  )
+              ],
+            ),
+          );
+        }
+      ):Center(child: Text('Loading..'),)
     );
   }
 }
